@@ -1019,10 +1019,10 @@ void saveScreenCap(VkDevice device,VkCommandBuffer cmd,VkQueue queue, VkImage sr
 			for (uint32_t j = 0; j < extent.width; j++) {
 				
 				uint32_t pix = ppixel[i * extent.width + j];
-				uint8_t r = (pix & 0xFF000000) >> 24;
-				uint8_t g = (pix & 0x00FF0000) >> 16;
-				uint8_t b = (pix & 0x0000FF00) >> 8;
-				uint8_t a = (pix & 0x000000FF);
+				uint8_t a = (pix & 0xFF000000) >> 24;
+				uint8_t r = (pix & 0x00FF0000) >> 16;
+				uint8_t g = (pix & 0x0000FF00) >> 8;
+				uint8_t b = (pix & 0x000000FF);
 				uint32_t newPix = (a << 24) | (b << 16) | (g << 8) | r;
 				ppixel[i * extent.width + j] = newPix;
 				
