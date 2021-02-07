@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <iostream>
+#include <string>
 #include <fstream>
 #include <vector>
 #include <cstdint>
@@ -13,6 +14,9 @@
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
 
 
 const int WIDTH = 800;
@@ -517,11 +521,13 @@ void CopyBufferTo(VkDevice device,VkQueue queue, VkCommandBuffer cmd, Buffer& sr
 }
 
 struct Image {
-	VkImage	image;
-	VkDeviceMemory memory;
-	VkSampler sampler;
-	VkImageView imageView;
+	VkImage	image{ VK_NULL_HANDLE };
+	VkDeviceMemory memory{ VK_NULL_HANDLE };
+	VkSampler sampler{ VK_NULL_HANDLE };
+	VkImageView imageView{ VK_NULL_HANDLE };
 };
+
+
 
 void initImage(VkDevice device,VkFormat format, VkFormatProperties &formatProperties, VkPhysicalDeviceMemoryProperties& memoryProperties, VkMemoryPropertyFlags memoryPropertyFlags,uint32_t width,uint32_t height, Image& image) {
 	VkImageCreateInfo imageCI{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
@@ -570,12 +576,12 @@ void initImage(VkDevice device,VkFormat format, VkFormatProperties &formatProper
 }
 
 
-void transitionImage(VkDevice device,VkQueue queue,VkCommandBuffer cmd, Image& image, VkImageLayout oldLayout, VkImageLayout newLayout) {
+void transitionImage(VkDevice device,VkQueue queue,VkCommandBuffer cmd, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout) {
 	VkImageMemoryBarrier barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 	barrier.oldLayout = oldLayout;
 	barrier.newLayout = newLayout;
 	barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = image.image;
+	barrier.image = image;
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.levelCount = 1;
 	barrier.subresourceRange.baseArrayLayer = 0;
@@ -803,10 +809,14 @@ void cleanupDescriptorSetLayout(VkDevice device, VkDescriptorSetLayout descripto
 }
 
 void cleanupImage(VkDevice device, Image& image) {
-	vkDestroySampler(device, image.sampler, nullptr);
-	vkDestroyImageView(device, image.imageView, nullptr);
-	vkFreeMemory(device, image.memory, nullptr);
-	vkDestroyImage(device, image.image, nullptr);
+	if(image.sampler!= VK_NULL_HANDLE)
+		vkDestroySampler(device, image.sampler, nullptr);
+	if(image.imageView!= VK_NULL_HANDLE)
+		vkDestroyImageView(device, image.imageView, nullptr);
+	if(image.memory != VK_NULL_HANDLE)
+		vkFreeMemory(device, image.memory, nullptr);
+	if(image.image!=VK_NULL_HANDLE)
+		vkDestroyImage(device, image.image, nullptr);
 }
 
 void cleanupBuffer(VkDevice device, Buffer& buffer) {
@@ -883,7 +893,148 @@ void cleanupWindow(GLFWwindow* window) {
 	glfwTerminate();
 }
 
+void saveScreenCap(VkDevice device,VkCommandBuffer cmd,VkQueue queue, VkImage srcImage, VkPhysicalDeviceMemoryProperties& memoryProperties, VkFormatProperties&formatProperties,VkFormat colorFormat,VkExtent2D extent, uint32_t index ) {
+	//cribbed from Sascha Willems code.
+	bool supportsBlit = (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_BLIT_SRC_BIT) && (formatProperties.linearTilingFeatures&VK_FORMAT_FEATURE_BLIT_DST_BIT);
+	Image dstImage;
+	VkImageCreateInfo imageCI{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+	imageCI.imageType = VK_IMAGE_TYPE_2D;
+	imageCI.format = colorFormat;
+	imageCI.extent = { extent.width,extent.height,1 };
+	imageCI.mipLevels = 1;
+	imageCI.arrayLayers = 1;
+	imageCI.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageCI.tiling = VK_IMAGE_TILING_LINEAR;
+	imageCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageCI.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	VkResult res = vkCreateImage(device, &imageCI, nullptr, &dstImage.image);
+	assert(res == VK_SUCCESS);
 
+	VkMemoryRequirements memReqs{};
+	vkGetImageMemoryRequirements(device, dstImage.image, &memReqs);
+	VkMemoryAllocateInfo memAllocInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+	memAllocInfo.allocationSize = memReqs.size;
+	memAllocInfo.memoryTypeIndex = findMemoryType(memReqs.memoryTypeBits, memoryProperties, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	res = vkAllocateMemory(device, &memAllocInfo, nullptr, &dstImage.memory);
+	assert(res == VK_SUCCESS);
+	res = vkBindImageMemory(device, dstImage.image, dstImage.memory, 0);
+	assert(res == VK_SUCCESS);
+
+	
+
+	
+	
+	transitionImage(device, queue, cmd, dstImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	
+	transitionImage(device, queue, cmd, srcImage, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+	VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+	res = vkBeginCommandBuffer(cmd, &beginInfo);
+	assert(res == VK_SUCCESS);
+	
+
+	
+	if (supportsBlit) {
+		VkOffset3D blitSize;
+		blitSize.x = extent.width;
+		blitSize.y = extent.height;
+		blitSize.z = 1;
+
+		VkImageBlit imageBlitRegion{};
+		imageBlitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageBlitRegion.srcSubresource.layerCount = 1;
+		imageBlitRegion.srcOffsets[1] = blitSize;
+		imageBlitRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageBlitRegion.dstSubresource.layerCount = 1;
+		imageBlitRegion.dstOffsets[1];
+
+		vkCmdBlitImage(cmd,srcImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			dstImage.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			1,
+			&imageBlitRegion,
+			VK_FILTER_NEAREST);
+	}
+	else {
+		VkImageCopy imageCopyRegion{};
+		
+		imageCopyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageCopyRegion.srcSubresource.layerCount = 1;
+		imageCopyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageCopyRegion.dstSubresource.layerCount = 1;
+		imageCopyRegion.extent.width = extent.width;
+		imageCopyRegion.extent.height = extent.height;
+		imageCopyRegion.extent.depth = 1;
+
+		vkCmdCopyImage(cmd,
+			srcImage,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			dstImage.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			1,
+			&imageCopyRegion);
+	}
+
+	res = vkEndCommandBuffer(cmd);
+	assert(res == VK_SUCCESS);
+
+	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &cmd;
+
+	VkFence fence = initFence(device);
+
+
+	res = vkQueueSubmit(queue, 1, &submitInfo, fence);
+	assert(res == VK_SUCCESS);
+
+	res = vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+	assert(res == VK_SUCCESS);
+
+
+	vkDestroyFence(device, fence, nullptr);
+
+
+	transitionImage(device, queue, cmd, dstImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+
+	transitionImage(device, queue, cmd, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+	VkImageSubresource subResource{ VK_IMAGE_ASPECT_COLOR_BIT,0,0 };
+	VkSubresourceLayout subResourceLayout;
+	vkGetImageSubresourceLayout(device, dstImage.image, &subResource, &subResourceLayout);
+
+	bool colorSwizzle = false;
+	if (!supportsBlit)
+	{
+		std::vector<VkFormat> formatsBGR = { VK_FORMAT_B8G8R8A8_SRGB, VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_SNORM };
+		colorSwizzle = (std::find(formatsBGR.begin(), formatsBGR.end(), colorFormat) != formatsBGR.end());
+	}
+
+	uint8_t* data{ nullptr };
+	vkMapMemory(device, dstImage.memory, 0, VK_WHOLE_SIZE, 0, (void**)&data);
+	data += subResourceLayout.offset;
+
+	std::string filename = std::to_string(index) + ".jpg";
+	if (colorSwizzle) {
+		uint32_t* ppixel = (uint32_t*)data;
+		//must be a better way to do this
+		for (uint32_t i = 0; i < extent.height; i++) {
+			for (uint32_t j = 0; j < extent.width; j++) {
+				
+				uint32_t pix = ppixel[i * extent.width + j];
+				uint8_t r = (pix & 0xFF000000) >> 24;
+				uint8_t g = (pix & 0x00FF0000) >> 16;
+				uint8_t b = (pix & 0x0000FF00) >> 8;
+				uint8_t a = (pix & 0x000000FF);
+				uint32_t newPix = (a << 24) | (b << 16) | (g << 8) | r;
+				ppixel[i * extent.width + j] = newPix;
+				
+			}
+		}
+	}
+	stbi_write_jpg(filename.c_str(), extent.width, extent.height, 4, data, 100);
+
+	vkUnmapMemory(device, dstImage.memory);
+
+	cleanupImage(device, dstImage);
+}
 
 int main() {
 	GLFWwindow* window = initWindow(WIDTH, HEIGHT);
@@ -950,7 +1101,7 @@ int main() {
 
 	Image computeImage;
 	initImage(device, swapchainFormat.format, formatProperties, memoryProperties, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1024, 1024, computeImage);
-	transitionImage(device,graphicsQueue,commandBuffer, computeImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+	transitionImage(device,graphicsQueue,commandBuffer, computeImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
 	struct {
 		float imageWidth;
@@ -1127,7 +1278,7 @@ int main() {
 	assert(pvkCmdDraw);
 
 	//main loop
-	uint32_t index = UINT32_MAX;
+	uint32_t index = 0;
 	VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	VkCommandBuffer cmd{ VK_NULL_HANDLE };
 	VkClearValue clearValues[1] = { {0.0f,0.0f,0.0f,0.0f} };
@@ -1155,9 +1306,13 @@ int main() {
 	presentInfo.pWaitSemaphores = &renderComplete;
 	presentInfo.waitSemaphoreCount = 1;
 	VkResult res;
+	uint32_t frameCount = 0;
 	while (!glfwWindowShouldClose(window)) {
-		if (glfwGetKey(window, GLFW_KEY_ESCAPE))
+		if (glfwGetKey(window, GLFW_KEY_ESCAPE)==GLFW_PRESS)
 			glfwSetWindowShouldClose(window, 1);
+		else if (glfwGetKey(window, GLFW_KEY_P)==GLFW_PRESS) {
+			saveScreenCap(device,commandBuffers[index],graphicsQueue, swapchainImages[index],memoryProperties, formatProperties,swapchainFormat.format,swapchainExtent, frameCount );
+		}
 		glfwPollEvents();
 		
 		pvkBeginCommandBuffer(computeCommandBuffer, &beginInfo);
@@ -1196,7 +1351,7 @@ int main() {
 		res = pvkQueuePresent(presentQueue, &presentInfo);
 		assert(res == VK_SUCCESS);
 		pvkQueueWaitIdle(presentQueue);
-
+		frameCount++;
 	}
 
 	vkDeviceWaitIdle(device);
