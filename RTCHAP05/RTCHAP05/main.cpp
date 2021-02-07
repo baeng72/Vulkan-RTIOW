@@ -20,7 +20,7 @@
 
 
 const int WIDTH = 800;
-const int HEIGHT = 600;
+const int HEIGHT = 608;
 
 
 
@@ -1100,7 +1100,10 @@ int main() {
 	VkFence computeFence = initFence(device, VK_FENCE_CREATE_SIGNALED_BIT);
 
 	Image computeImage;
-	initImage(device, swapchainFormat.format, formatProperties, memoryProperties, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1024, 1024, computeImage);
+	float aspectRatio =  (float)WIDTH / (float)HEIGHT;
+	float imageWidth = (float)WIDTH;// 1024;
+	float imageHeight = (float)HEIGHT;// 1024;// imageWidth / aspectRatio;
+	initImage(device, swapchainFormat.format, formatProperties, memoryProperties, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, (uint32_t)imageWidth, (uint32_t)imageHeight, computeImage);
 	transitionImage(device, graphicsQueue, commandBuffer, computeImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
 	struct {
@@ -1110,9 +1113,9 @@ int main() {
 		float viewportHeight;
 		float focalLength;
 	}ubo;
-	ubo.imageWidth = 1024.0f;
-	ubo.imageHeight = 1024.0f;
-	ubo.viewportHeight = 2.0f;
+	ubo.imageWidth = imageWidth;
+	ubo.imageHeight = imageHeight;
+	ubo.viewportHeight = 2.0f/aspectRatio;
 	ubo.viewportWidth = 2.0f;
 	ubo.focalLength = 1.0f;
 	Buffer uboBuffer;
@@ -1318,7 +1321,7 @@ int main() {
 		pvkBeginCommandBuffer(computeCommandBuffer, &beginInfo);
 		pvkCmdBindPipeline(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
 		pvkCmdBindDescriptorSets(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1, &computeDescriptorSet, 0, 0);
-		pvkCmdDispatch(computeCommandBuffer, 1024 / 16, 1024 / 16, 1);
+		pvkCmdDispatch(computeCommandBuffer, (uint32_t)(imageWidth / 16),(uint32_t)( imageHeight / 16), 1);
 		pvkEndCommandBuffer(computeCommandBuffer);
 		res = pvkQueueSubmit(computeQueue, 1, &computeInfo, VK_NULL_HANDLE);
 		assert(res == VK_SUCCESS);
