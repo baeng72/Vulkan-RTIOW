@@ -43,7 +43,8 @@ VkInstance initInstance(std::vector<const char*>& requiredExtensions, std::vecto
 	instanceCI.ppEnabledExtensionNames = requiredExtensions.data();
 	instanceCI.enabledLayerCount = static_cast<uint32_t>(requiredLayers.size());
 	instanceCI.ppEnabledLayerNames = requiredLayers.data();
-	assert(vkCreateInstance(&instanceCI, nullptr, &instance) == VK_SUCCESS);
+	VkResult res = vkCreateInstance(&instanceCI, nullptr, &instance);
+	assert(res == VK_SUCCESS);
 	assert(instance != VK_NULL_HANDLE);
 
 return instance;
@@ -67,10 +68,13 @@ struct Queues {
 VkPhysicalDevice choosePhysicalDevice(VkInstance instance, VkSurfaceKHR surface, Queues& queues) {
 	VkPhysicalDevice physicalDevice{ VK_NULL_HANDLE };
 	uint32_t physicalDeviceCount = 0;
-	assert(vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr) == VK_SUCCESS);
+	VkResult res;
+	res = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
+	assert(res==VK_SUCCESS);
 	assert(physicalDeviceCount > 0);
 	std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-	assert(vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data()) == VK_SUCCESS);
+	res = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data());
+	assert(res==VK_SUCCESS);
 
 
 	for (size_t i = 0; i < physicalDevices.size(); i++) {
@@ -134,7 +138,8 @@ VkDevice initDevice(VkPhysicalDevice physicalDevice, std::vector<const char*> de
 	deviceCI.pEnabledFeatures = &enabledFeatures;
 	deviceCI.queueCreateInfoCount = static_cast<uint32_t>(queueCIs.size());
 	deviceCI.pQueueCreateInfos = queueCIs.data();
-	assert(vkCreateDevice(physicalDevice, &deviceCI, nullptr, &device) == VK_SUCCESS);
+	VkResult res = vkCreateDevice(physicalDevice, &deviceCI, nullptr, &device);
+	assert(res == VK_SUCCESS);
 	return device;
 }
 
@@ -157,9 +162,6 @@ VkPresentModeKHR chooseSwapchainPresentMode(std::vector<VkPresentModeKHR>& prese
 			presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
 		}
 	}
-	return presentMode;
-
-
 	return presentMode;
 }
 
@@ -247,15 +249,19 @@ VkSwapchainKHR initSwapchain(VkDevice device,VkSurfaceKHR surface,uint32_t width
 	if (surfaceCaps.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) {
 		swapchainCI.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 	}
-	assert(vkCreateSwapchainKHR(device, &swapchainCI, nullptr, &swapchain) == VK_SUCCESS);		
+	VkResult res = vkCreateSwapchainKHR(device, &swapchainCI, nullptr, &swapchain);
+	assert(res == VK_SUCCESS);
 	return swapchain;
 }
 
 void getSwapchainImages(VkDevice device,VkSwapchainKHR swapchain,std::vector<VkImage>& images) {
 	uint32_t imageCount = 0;
-	assert(vkGetSwapchainImagesKHR(device, swapchain, &imageCount, nullptr) == VK_SUCCESS);
+	VkResult res = vkGetSwapchainImagesKHR(device, swapchain, &imageCount, nullptr);
+	assert(res == VK_SUCCESS);
+	assert(imageCount > 0);
 	images.resize(imageCount);
-	assert(vkGetSwapchainImagesKHR(device, swapchain, &imageCount, images.data()) == VK_SUCCESS);
+	res = vkGetSwapchainImagesKHR(device, swapchain, &imageCount, images.data());
+	assert(res == VK_SUCCESS);
 }
 
 void initSwapchainImageViews(VkDevice device, std::vector<VkImage>& swapchainImages,VkFormat&swapchainFormat, std::vector<VkImageView>& swapchainImageViews) {
@@ -271,7 +277,8 @@ void initSwapchainImageViews(VkDevice device, std::vector<VkImage>& swapchainIma
 		viewCI.subresourceRange.layerCount = 1;
 		viewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		viewCI.image = swapchainImages[i];
-		assert(vkCreateImageView(device, &viewCI, nullptr, &swapchainImageViews[i]) == VK_SUCCESS);
+		VkResult res = vkCreateImageView(device, &viewCI, nullptr, &swapchainImageViews[i]);
+		assert(res == VK_SUCCESS);
 	}
 }
 
@@ -284,7 +291,8 @@ void cleanupSwapchainImageViews(VkDevice device, std::vector<VkImageView>& image
 VkSemaphore initSemaphore(VkDevice device) {
 	VkSemaphore semaphore{ VK_NULL_HANDLE };
 	VkSemaphoreCreateInfo semaphoreCI{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-	assert(vkCreateSemaphore(device, &semaphoreCI, nullptr, &semaphore) == VK_SUCCESS);
+	VkResult res = vkCreateSemaphore(device, &semaphoreCI, nullptr, &semaphore);
+	assert(res == VK_SUCCESS);
 	return semaphore;
 }
 
@@ -294,7 +302,8 @@ VkCommandPool initCommandPool(VkDevice device, uint32_t queueFamily) {
 	VkCommandPoolCreateInfo cmdPoolCI{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
 	cmdPoolCI.queueFamilyIndex = queueFamily;
 	cmdPoolCI.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	assert(vkCreateCommandPool(device, &cmdPoolCI, nullptr, &commandPool) == VK_SUCCESS);
+	VkResult res = vkCreateCommandPool(device, &cmdPoolCI, nullptr, &commandPool);
+	assert(res == VK_SUCCESS);
 	return commandPool;
 }
 
@@ -304,7 +313,8 @@ void initCommandPools(VkDevice device, size_t size,uint32_t queueFamily, std::ve
 		VkCommandPoolCreateInfo cmdPoolCI{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
 		cmdPoolCI.queueFamilyIndex = queueFamily;
 		cmdPoolCI.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-		assert(vkCreateCommandPool(device, &cmdPoolCI, nullptr, &commandPools[i]) == VK_SUCCESS);
+		VkResult res = vkCreateCommandPool(device, &cmdPoolCI, nullptr, &commandPools[i]);
+		assert(res == VK_SUCCESS);
 	}
 }
 
@@ -314,7 +324,8 @@ VkCommandBuffer initCommandBuffer(VkDevice device, VkCommandPool commandPool) {
 	cmdBufAI.commandPool = commandPool;
 	cmdBufAI.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	cmdBufAI.commandBufferCount = 1;
-	assert(vkAllocateCommandBuffers(device, &cmdBufAI, &commandBuffer) == VK_SUCCESS);
+	VkResult res = vkAllocateCommandBuffers(device, &cmdBufAI, &commandBuffer);
+	assert(res == VK_SUCCESS);
 		
 
 	return commandBuffer;
@@ -327,7 +338,8 @@ void initCommandBuffers(VkDevice device, std::vector<VkCommandPool>& commandPool
 		cmdBufAI.commandPool = commandPools[i];
 		cmdBufAI.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		cmdBufAI.commandBufferCount = 1;
-		assert(vkAllocateCommandBuffers(device, &cmdBufAI, &commandBuffers[i]) == VK_SUCCESS);
+		VkResult res = vkAllocateCommandBuffers(device, &cmdBufAI, &commandBuffers[i]);
+		assert(res == VK_SUCCESS);
 	}
 }
 
@@ -366,7 +378,8 @@ VkRenderPass initRenderPass(VkDevice device, VkFormat colorFormat) {
 	renderCI.dependencyCount = 1;
 	renderCI.pDependencies = &dependency;
 
-	assert(vkCreateRenderPass(device, &renderCI, nullptr, &renderPass) == VK_SUCCESS);
+	VkResult res = vkCreateRenderPass(device, &renderCI, nullptr, &renderPass);
+	assert(res == VK_SUCCESS);
 
 	return renderPass;
 }
@@ -382,7 +395,8 @@ void initFramebuffers(VkDevice device, VkRenderPass renderPass, std::vector<VkIm
 		fbCI.width = width;
 		fbCI.height = height;
 		fbCI.layers = 1;
-		assert(vkCreateFramebuffer(device, &fbCI, nullptr, &framebuffers[i]) == VK_SUCCESS);
+		VkResult res = vkCreateFramebuffer(device, &fbCI, nullptr, &framebuffers[i]);
+		assert(res == VK_SUCCESS);
 	}
 }
 
@@ -410,7 +424,8 @@ VkShaderModule initShaderModule(VkDevice device, const char* filename) {
 	VkShaderModuleCreateInfo createInfo{ VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
 	createInfo.codeSize = buffer.size();
 	createInfo.pCode = reinterpret_cast<const uint32_t*>(buffer.data());
-	assert(vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) == VK_SUCCESS);
+	VkResult res = vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule);
+	assert(res == VK_SUCCESS);
 	return shaderModule;
 }
 
@@ -435,7 +450,8 @@ VkFence initFence(VkDevice device,VkFenceCreateFlags flags=0) {
 	VkFenceCreateInfo fenceCI{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
 	fenceCI.flags = flags;
 	VkFence fence{ VK_NULL_HANDLE };
-	assert(vkCreateFence(device, &fenceCI, nullptr, &fence) == VK_SUCCESS);
+	VkResult res = vkCreateFence(device, &fenceCI, nullptr, &fence);
+	assert(res == VK_SUCCESS);
 	return fence;
 }
 
@@ -445,20 +461,24 @@ void initBuffer(VkDevice device, VkPhysicalDeviceMemoryProperties& memoryPropert
 	bufferCI.size = size;
 	bufferCI.usage = usageFlags;
 	bufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	assert(vkCreateBuffer(device, &bufferCI, nullptr, &buffer.buffer) == VK_SUCCESS);
+	VkResult res = vkCreateBuffer(device, &bufferCI, nullptr, &buffer.buffer);
+	assert(res == VK_SUCCESS);
 	VkMemoryRequirements memReqs{};
 	vkGetBufferMemoryRequirements(device, buffer.buffer, &memReqs);
 	VkMemoryAllocateInfo memAllocInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	memAllocInfo.allocationSize = memReqs.size;
 	memAllocInfo.memoryTypeIndex = findMemoryType(memReqs.memoryTypeBits, memoryProperties, memoryPropertyFlags);
-	assert(vkAllocateMemory(device, &memAllocInfo, nullptr, &buffer.memory) == VK_SUCCESS);
-	assert(vkBindBufferMemory(device, buffer.buffer, buffer.memory, 0) == VK_SUCCESS);
+	res = vkAllocateMemory(device, &memAllocInfo, nullptr, &buffer.memory);
+	assert(res == VK_SUCCESS);
+	res = vkBindBufferMemory(device, buffer.buffer, buffer.memory, 0);
+	assert(res == VK_SUCCESS);
 	buffer.size = size;
 }
 
 void* mapBuffer(VkDevice device,Buffer& buffer) {
 	void* pData{ nullptr };
-	assert(vkMapMemory(device, buffer.memory, 0, buffer.size, 0, &pData) == VK_SUCCESS);
+	VkResult res = vkMapMemory(device, buffer.memory, 0, buffer.size, 0, &pData);
+	assert(res == VK_SUCCESS);
 	return pData;
 }
 
@@ -470,12 +490,14 @@ void CopyBufferTo(VkDevice device,VkQueue queue, VkCommandBuffer cmd, Buffer& sr
 	VkBufferCopy copyRegion = {};
 	VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 
-	assert(vkBeginCommandBuffer(cmd, &beginInfo) == VK_SUCCESS);
+	VkResult res = vkBeginCommandBuffer(cmd, &beginInfo);
+	assert(res == VK_SUCCESS);
 
 	copyRegion.size = size;
 	vkCmdCopyBuffer(cmd, src.buffer, dst.buffer, 1, &copyRegion);
 
-	assert(vkEndCommandBuffer(cmd) == VK_SUCCESS);
+	res = vkEndCommandBuffer(cmd);
+	assert(res == VK_SUCCESS);
 
 	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
 	submitInfo.commandBufferCount = 1;
@@ -484,9 +506,11 @@ void CopyBufferTo(VkDevice device,VkQueue queue, VkCommandBuffer cmd, Buffer& sr
 	VkFence fence = initFence(device);
 	
 
-	assert(vkQueueSubmit(queue, 1, &submitInfo, fence) == VK_SUCCESS);
+	res = vkQueueSubmit(queue, 1, &submitInfo, fence);
+	assert(res == VK_SUCCESS);
 		
-	assert(vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX) == VK_SUCCESS);
+	res = vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+	assert(res == VK_SUCCESS);
 		
 
 	vkDestroyFence(device, fence, nullptr);
@@ -510,15 +534,18 @@ void initImage(VkDevice device,VkFormat format, VkFormatProperties &formatProper
 	imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imageCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	imageCI.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
-	assert(vkCreateImage(device, &imageCI, nullptr, &image.image) == VK_SUCCESS);
+	VkResult res = vkCreateImage(device, &imageCI, nullptr, &image.image);
+	assert(res == VK_SUCCESS);
 
 	VkMemoryRequirements memReqs{};
 	vkGetImageMemoryRequirements(device, image.image, &memReqs);
 	VkMemoryAllocateInfo memAllocInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	memAllocInfo.allocationSize = memReqs.size;
 	memAllocInfo.memoryTypeIndex = findMemoryType(memReqs.memoryTypeBits, memoryProperties, memoryPropertyFlags);
-	assert(vkAllocateMemory(device, &memAllocInfo, nullptr, &image.memory) == VK_SUCCESS);
-	assert(vkBindImageMemory(device, image.image, image.memory, 0) == VK_SUCCESS);
+	res = vkAllocateMemory(device, &memAllocInfo, nullptr, &image.memory);
+	assert(res == VK_SUCCESS);
+	res = vkBindImageMemory(device, image.image, image.memory, 0);
+	assert(res == VK_SUCCESS);
 
 	VkImageViewCreateInfo imageViewCI{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 	imageViewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -526,7 +553,8 @@ void initImage(VkDevice device,VkFormat format, VkFormatProperties &formatProper
 	imageViewCI.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
 	imageViewCI.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1 };
 	imageViewCI.image = image.image;
-	assert(vkCreateImageView(device, &imageViewCI, nullptr, &image.imageView) == VK_SUCCESS);
+	res = vkCreateImageView(device, &imageViewCI, nullptr, &image.imageView);
+	assert(res == VK_SUCCESS);
 
 	VkSamplerCreateInfo samplerCI{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
 	samplerCI.magFilter = samplerCI.minFilter = VK_FILTER_LINEAR;
@@ -537,7 +565,8 @@ void initImage(VkDevice device,VkFormat format, VkFormatProperties &formatProper
 	samplerCI.compareOp = VK_COMPARE_OP_NEVER;
 	samplerCI.minLod = samplerCI.maxLod = 0.0f;
 	samplerCI.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-	assert(vkCreateSampler(device, &samplerCI, nullptr, &image.sampler) == VK_SUCCESS);
+	res = vkCreateSampler(device, &samplerCI, nullptr, &image.sampler);
+	assert(res == VK_SUCCESS);
 }
 
 
@@ -573,10 +602,12 @@ void transitionImage(VkDevice device,VkQueue queue,VkCommandBuffer cmd, Image& i
 		
 	}
 	VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-	assert(vkBeginCommandBuffer(cmd, &beginInfo)==VK_SUCCESS);
+	VkResult res = vkBeginCommandBuffer(cmd, &beginInfo);
+	assert(res == VK_SUCCESS);
 	vkCmdPipelineBarrier(cmd,sourceStage,destinationStage,
 		0, 0, nullptr, 0, nullptr, 1, &barrier);
-	assert(vkEndCommandBuffer(cmd)==VK_SUCCESS);
+	res = vkEndCommandBuffer(cmd);
+	assert(res == VK_SUCCESS);
 
 	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
 	submitInfo.commandBufferCount = 1;
@@ -585,9 +616,11 @@ void transitionImage(VkDevice device,VkQueue queue,VkCommandBuffer cmd, Image& i
 	VkFence fence = initFence(device);
 
 
-	assert(vkQueueSubmit(queue, 1, &submitInfo, fence) == VK_SUCCESS);
+	res = vkQueueSubmit(queue, 1, &submitInfo, fence);
+	assert(res == VK_SUCCESS);
 
-	assert(vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX) == VK_SUCCESS);
+	res = vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+	assert(res == VK_SUCCESS);
 
 
 	vkDestroyFence(device, fence, nullptr);
@@ -598,7 +631,8 @@ VkDescriptorSetLayout initDescriptorSetLayout(VkDevice device, std::vector<VkDes
 	VkDescriptorSetLayoutCreateInfo descLayoutCI{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
 	descLayoutCI.bindingCount = static_cast<uint32_t>(descriptorBindings.size());
 	descLayoutCI.pBindings = descriptorBindings.data();
-	assert(vkCreateDescriptorSetLayout(device, &descLayoutCI, nullptr, &descriptorSetLayout) == VK_SUCCESS);		
+	VkResult res = vkCreateDescriptorSetLayout(device, &descLayoutCI, nullptr, &descriptorSetLayout);
+	assert(res == VK_SUCCESS);
 	return descriptorSetLayout;
 }
 
@@ -608,7 +642,8 @@ VkDescriptorPool initDescriptorPool(VkDevice device, std::vector<VkDescriptorPoo
 	descPoolCI.poolSizeCount = static_cast<uint32_t>(descriptorPoolSizes.size());
 	descPoolCI.pPoolSizes = descriptorPoolSizes.data();
 	descPoolCI.maxSets = maxSets;
-	assert(vkCreateDescriptorPool(device, &descPoolCI, nullptr, &descriptorPool) == VK_SUCCESS);
+	VkResult res = vkCreateDescriptorPool(device, &descPoolCI, nullptr, &descriptorPool);
+	assert(res == VK_SUCCESS);
 	return descriptorPool;
 }
 
@@ -619,7 +654,8 @@ VkDescriptorSet initDescriptorSet(VkDevice device, VkDescriptorSetLayout descrip
 	descAI.descriptorSetCount = 1;
 	descAI.pSetLayouts = &descriptorSetLayout;
 
-	assert(vkAllocateDescriptorSets(device, &descAI, &descriptorSet) == VK_SUCCESS);
+	VkResult res = vkAllocateDescriptorSets(device, &descAI, &descriptorSet);
+	assert(res == VK_SUCCESS);
 	return descriptorSet;
 }
 
@@ -632,7 +668,8 @@ VkPipelineLayout initPipelineLayout(VkDevice device, VkDescriptorSetLayout descr
 	VkPipelineLayoutCreateInfo layoutCI{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
 	layoutCI.pSetLayouts = descriptorSetLayout == VK_NULL_HANDLE ? nullptr : &descriptorSetLayout;
 	layoutCI.setLayoutCount = descriptorSetLayout == VK_NULL_HANDLE ? 0 : 1;
-	assert(vkCreatePipelineLayout(device, &layoutCI, nullptr, &pipelineLayout) == VK_SUCCESS);
+	VkResult res = vkCreatePipelineLayout(device, &layoutCI, nullptr, &pipelineLayout);
+	assert(res == VK_SUCCESS);
 	return pipelineLayout;
 }
 
@@ -721,7 +758,8 @@ VkPipeline initGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPipe
 	pipe.renderPass = renderPass;
 	pipe.layout = pipelineLayout;
 
-	assert(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipe, nullptr, &pipeline) == VK_SUCCESS);
+	VkResult res = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipe, nullptr, &pipeline);
+	assert(res == VK_SUCCESS);
 
 	return pipeline;
 
@@ -736,7 +774,8 @@ VkPipeline initComputePipeline(VkDevice device, VkPipelineLayout pipelineLayout,
 	VkComputePipelineCreateInfo computeCI{ VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
 	computeCI.stage = shaderCI;
 	computeCI.layout = pipelineLayout;
-	assert(vkCreateComputePipelines(device, nullptr, 1, &computeCI, nullptr, &pipeline) == VK_SUCCESS);
+	VkResult res = vkCreateComputePipelines(device, nullptr, 1, &computeCI, nullptr, &pipeline);
+	assert(res == VK_SUCCESS);
 
 	return pipeline;
 }
@@ -853,7 +892,11 @@ int main() {
 	uint32_t extCount = 0;
 	auto ext = glfwGetRequiredInstanceExtensions(&extCount);
 	std::vector<const char*> requiredExtensions(ext, ext + extCount);
+#ifdef NDEBUG
+	std::vector<const char*> requiredLayers{ "VK_LAYER_LUNARG_monitor" };	
+#else
 	std::vector<const char*> requiredLayers{ "VK_LAYER_KHRONOS_validation", "VK_LAYER_LUNARG_monitor" };
+#endif
 
 	VkInstance instance = initInstance(requiredExtensions, requiredLayers);
 	VkSurfaceKHR surface = initSurface(instance, window);
@@ -1111,6 +1154,7 @@ int main() {
 	presentInfo.pImageIndices = &index;
 	presentInfo.pWaitSemaphores = &renderComplete;
 	presentInfo.waitSemaphoreCount = 1;
+	VkResult res;
 	while (!glfwWindowShouldClose(window)) {
 		if (glfwGetKey(window, GLFW_KEY_ESCAPE))
 			glfwSetWindowShouldClose(window, 1);
@@ -1121,10 +1165,12 @@ int main() {
 		pvkCmdBindDescriptorSets(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1, &computeDescriptorSet, 0, 0);
 		pvkCmdDispatch(computeCommandBuffer, 1024 / 16, 1024 / 16, 1);
 		pvkEndCommandBuffer(computeCommandBuffer);
-		assert(pvkQueueSubmit(computeQueue, 1, &computeInfo, VK_NULL_HANDLE) == VK_SUCCESS);
+		res = pvkQueueSubmit(computeQueue, 1, &computeInfo, VK_NULL_HANDLE);
+		assert(res == VK_SUCCESS);
 		vkWaitForFences(device, 1, &computeFence, VK_TRUE, UINT64_MAX);
 		vkResetFences(device, 1, &computeFence);
-		assert(pvkAcquireNextImage(device, swapchain, UINT64_MAX, presentComplete, nullptr, &index) == VK_SUCCESS);
+		res = pvkAcquireNextImage(device, swapchain, UINT64_MAX, presentComplete, nullptr, &index);
+		assert(res == VK_SUCCESS);
 		
 		cmd = commandBuffers[index];
 		//transitionImage(device,graphicsQueue,cmd, computeImage, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL);
@@ -1141,11 +1187,14 @@ int main() {
 		//pvkCmdDraw(cmd, 3, 1, 0, 0);
 		pvkCmdEndRenderPass(cmd);
 
-		assert(pvkEndCommandBuffer(cmd) == VK_SUCCESS);
+		res = pvkEndCommandBuffer(cmd);
+		assert(res == VK_SUCCESS);
 
 		submitInfo.pCommandBuffers = &cmd;
-		assert(pvkQueueSubmit(graphicsQueue, 1, &submitInfo, computeFence)==VK_SUCCESS);
-		assert(pvkQueuePresent(presentQueue, &presentInfo) == VK_SUCCESS);
+		res = pvkQueueSubmit(graphicsQueue, 1, &submitInfo, computeFence);
+		assert(res == VK_SUCCESS);
+		res = pvkQueuePresent(presentQueue, &presentInfo);
+		assert(res == VK_SUCCESS);
 		pvkQueueWaitIdle(presentQueue);
 
 	}
