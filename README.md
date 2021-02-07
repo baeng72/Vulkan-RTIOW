@@ -1,5 +1,5 @@
 # Vulkan-RTIOW
-Vulkan compute shader version of Ray traciing in one weekend
+Vulkan compute shader version of Ray tracing in one weekend
 
 Just experimenting with Vulkan compute shader & basic ray tracing.
 
