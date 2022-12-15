@@ -116,12 +116,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>D:\ThirdParty\stb-master\stb-master;D:\ThirdParty\glfw-3.3.2.bin.WIN64\include;C:\VulkanSDK\1.2.162.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\ThirdParty\stb-master\stb-master;D:\ThirdParty\glfw-3.3.2.bin.WIN64\include;$(VULKAN_SDK)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>D:\ThirdParty\glfw-3.3.2.bin.WIN64\lib-vc2019;C:\VulkanSDK\1.2.162.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>D:\ThirdParty\glfw-3.3.2.bin.WIN64\lib-vc2019;$(VULKAN_SDK)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -146,6 +146,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Vulkan.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Vulkan.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
